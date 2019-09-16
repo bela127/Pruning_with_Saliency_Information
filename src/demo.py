@@ -14,6 +14,7 @@ mnist = keras.datasets.mnist
 train_images = train_images / 255.0
 test_images = test_images / 255.0
 
+
 # one hot encoding of labels
 def one_hot_encode(a, length):
     temp = np.zeros((a.shape[0], length))
@@ -46,8 +47,8 @@ ds_test_size = int(test_labels.shape[-1])
 
 #augmentation
 rauschen = True #False ; True
-#loading
-model_to_load = "None" # "None"; "model_step_0_acc_0.9089999794960022"
+#loading of Modell
+model_to_load = "model_step_0_acc_0.9187999963760376" # "None"; "model_step_0_acc_0.9187999963760376"
 #learning infos
 learning_rate = 0.1
 steps_number = 1551
@@ -86,6 +87,9 @@ if rauschen :
         train_images = np.clip(train_images, 0,1)
         test_images = np.clip(test_images, 0,1)
 
+# pixel werte auf -1 bis 1 skalieren
+train_images = train_images * 2 - 1
+test_images = test_images * 2 - 1
 
 # create dataset objects from the arrays
 dx = tf.data.Dataset.from_tensor_slices(train_images)
@@ -120,6 +124,7 @@ def main():
 
         if display_model:
                 display_model_with_samples(model_prun, 1)
+
         important_weights = calculate_important_weights(model_prun,1000)
         
         if display_pruning:
@@ -136,21 +141,7 @@ def main():
                 if display_pruning:
                         display_important_weights(important_weights)
 
-def extras():
-        c = tf.placeholder(tf.int32, shape=[None, 3, 100])
-        print(c.shape)
-        [d, e, f] = tf.unstack(c, axis=1) #unstack tensors along one dimension.
-        print(d.shape)
-        print(e.shape)
-
-        a = tf.concat([d,e],1) #Concatenates tensors along one dimension.
-        print(a.shape)
-
-        b = tf.stack([d,e],1)
-        print(b.shape)
-
-
-def create_base_model(inputs,outputs):
+def create_base_model(inputs, outputs):
         x = tf.placeholder(tf.float32, shape=(None, inputs), name="input")
         tf.add_to_collection("layer_out",x)
         y, mask = connection(x)
@@ -498,6 +489,7 @@ def calculate_important_weights(model_prun,samples):
                         minimum = np.min(grad)
                         maximum = np.max(grad)
 
+                        #Min Max norm of Gradients
                         if minimum < maximum:
                                 importance = grad - minimum
                                 importance = importance / (maximum - minimum)
