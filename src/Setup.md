@@ -23,8 +23,6 @@ kann die v-env aktiviert werden. Nun können die nötigen Pakete instaliert werd
 Folgende Pakete solten mit pip instaliert werden:
 
 	pip install tensorflow
-	pip install kerassurgeon
-	pip install keras-vis
 
 bzw. das Paket:
 
