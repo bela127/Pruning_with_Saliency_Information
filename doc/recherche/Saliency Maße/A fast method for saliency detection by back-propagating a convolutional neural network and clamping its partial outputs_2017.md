@@ -1,0 +1,7 @@
+
+→ Berechne die Input Gradienten in Bezug auf eine spezielle Kostenfunktion auf welche Objektpixel einen stärkeren Einfluss haben als Hintergrundpixel. Verändere den Input mithilfe der Gradienten (Einfache Back Propergation) in einigen (wenigen) Itterationen so, dass das Netz die entsprechende Kasse nicht mehr erkennt. Die Differenz von orginal Bild zu verändertem Bild entspricht der Sailiency.
+Kostenfunktion: Alle Outputs die nicht zur erkannten/untersuchten Klasse gehören werden konstant gehalten (orginal output bei unverändertem Bild), der Output der zur Klasse gehört soll möglichst gering (=0) werden. Die Kosten werden dann einfach als L2 / SSE berechnet.
+Es wird dabei angenommen, dass alle Outputs die nicht zur Klasse gehören auf den Hintergrund zurückzuführen sind, und nur der Output der entsprechenden Klasse auf das Objekt im Bild. Das Bild wird dann also so verändert, dass die für die Klasse relevanten Pixel entfernt werden.
+Negative Gradienten werden auf 0 geklippt, (weil es keine negativen Bild pixel gibt? → Begründung in paper, macht das sinn?), weil das differenzbild dann nur positive werte hat, weil sie wichtige objektpixel auf 0 setzen wollen. (begründung wieso auf 0 setzen und nicht auf 1 fehlt)
+besser als Xxx deep inside cnn xxx wo ähnliche methode mit nur einer itteration durchgeführt wird. → mehr itterationen verbesssern das Ergebniss
+Differenzbildung der beiden Bilder mathematisch unnötig für eine Itteration, aber für mehrere itterationen einfacher zu berechnen.

@@ -1,0 +1,1 @@
+Es wird eine Optimierung auf der Adjazenzmatrix der Gewichte durchgeführt, hierbei wird pro Layer versucht den Output des Layers für die Trainingsdaten gleich zu belassen aber mit weniger Gewichten zu erreichen. Dies wird als einfaches Optimierungsproblem mit L1 Loss (Summe der Feher Beträge) gelöst.

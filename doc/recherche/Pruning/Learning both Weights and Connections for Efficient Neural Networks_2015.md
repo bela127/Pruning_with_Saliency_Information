@@ -1,0 +1,1 @@
+Gewichte die unterhalb eines Grenzwertes liegen werden entfernt, das netz danach neu trainiert dieser prozess wird itterativ wiederholt

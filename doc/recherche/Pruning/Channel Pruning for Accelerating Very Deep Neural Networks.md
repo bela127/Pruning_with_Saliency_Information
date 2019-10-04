@@ -1,0 +1,1 @@
+Entferne einzelne Filter (Neuronen) in CNNs und damit ganze Kanäle in der Output Featuremap. Versuche mit den verbleibenden Kanälen in der Folge Schicht einen ähnlichen Output zu erhalten wobei der L2 Loss (Least Square Error) eingesetzt wird.

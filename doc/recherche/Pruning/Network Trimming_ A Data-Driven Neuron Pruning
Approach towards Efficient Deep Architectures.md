@@ -1,0 +1,1 @@
+bestimme die Average Percentage of Zeros (APoZ) der Aktivierungen jeder Schicht mithilfe eines Trainings Sample. Nutze dies als Maß für die Importance jedes Neurons. Entferne unwichtige Neuronen (mit hoher APoZ) das Netz wird daraufhin neu Trainiert und dieser Prozess iterativ durchgeführt.
