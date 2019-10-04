@@ -48,48 +48,55 @@ ds_test_size = int(test_labels.shape[-1])
 #augmentation
 rauschen = True #False ; True
 #loading of Modell
-model_to_load = "model_step_0_acc_0.9187999963760376" # "None"; "model_step_0_acc_0.9187999963760376"
+model_to_load = "model_step_0_acc_0.8704000115394592" #"model_step_0_acc_0.932699978351593" # "None";
 #learning infos
 learning_rate = 0.1
 steps_number = 1551
 batch_size = 200
 #pruning
-pruning_loss = True #False ; True
+pruning_loss = False #False ; True
+loss_change = False #False ; True
+pruning_faktor = 0.95
+pruning_steps = 150
 #info
-display_model = True #False ; True
-display_pruning = True #False ; True
+display_model = False #False ; True
+display_pruning = False #False ; True
 
 train_images = np.reshape(train_images, [-1, image_size*image_size])
 test_images = np.reshape(test_images, [-1, image_size*image_size])
 
+def augment_with_gaus(images, mean = 0.0, std = 0.2, max = 1, min = -1):
+        images_augmented = []
+        for image in images:
+                rausch = np.random.normal(mean,std,(image_size*image_size))
+                images_augmented.append(np.clip(image + rausch, min, max))
+        return np.asarray(images_augmented)
+
+def augment_with_salt_peper(images, percentage = 0.15, max = 1, min = -1):
+        images_augmented = []
+        rausch_count = int(image_size*image_size*percentage)
+        for image in images:
+
+                rausch_index = np.random.randint(0,image_size*image_size,rausch_count)
+                #salt
+                image[rausch_index[:rausch_count//2]] = max
+                #peper
+                image[rausch_index[rausch_count//2:]] = min
+                
+                images_augmented.append(image)
+        return np.asarray(images_augmented)
+
 
 if rauschen :
+        print("augment data")
         # add rauschen, else minist is too easy
         # gaus um 0 std 0.2
-        rausch = np.random.normal(0.1,0.2,(image_size*image_size))
+        train_images = augment_with_gaus(train_images)
+        test_images = augment_with_gaus(test_images)
 
-        train_images = train_images + rausch
-        test_images = test_images + rausch
-
-        #salt/peper 0.2
-        rausch_count = int(image_size*image_size*0.15)
-        rausch_index = np.random.randint(0,image_size*image_size,rausch_count)
-        rausch = np.zeros((image_size*image_size))
-        #salt
-        rausch[rausch_index[:rausch_count//2]] = 1
-        #peper
-        rausch[rausch_index[rausch_count//2:]] = -1
-
-        train_images = train_images + rausch
-        test_images = test_images + rausch
-
-        # input images with between 0 and 1
-        train_images = np.clip(train_images, 0,1)
-        test_images = np.clip(test_images, 0,1)
-
-# pixel werte auf -1 bis 1 skalieren
-train_images = train_images * 2 - 1
-test_images = test_images * 2 - 1
+        #salt/peper 0.15
+        train_images = augment_with_salt_peper(train_images)
+        test_images = augment_with_salt_peper(test_images)
 
 # create dataset objects from the arrays
 dx = tf.data.Dataset.from_tensor_slices(train_images)
