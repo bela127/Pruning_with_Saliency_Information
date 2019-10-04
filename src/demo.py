@@ -7,13 +7,16 @@ import keras.backend as K
 
 sess = tf.InteractiveSession()
 
-mnist = keras.datasets.mnist
+mnist = keras.datasets.mnist#.fashion_mnist#.mnist
 (train_images, train_labels), (test_images, test_labels) = mnist.load_data()
 
 # pixel werte auf 0 bis 1 skalieren
 train_images = train_images / 255.0
 test_images = test_images / 255.0
 
+# pixel werte auf -1 bis 1 skalieren
+train_images = train_images * 2 - 1
+test_images = test_images * 2 - 1
 
 # one hot encoding of labels
 def one_hot_encode(a, length):
@@ -127,30 +130,33 @@ def main():
         model_prun = create_pruning_model(model)
 
         saver = tf.train.Saver()
-        load_or_init_model(saver)
+        loaded = load_or_init_model(saver)
 
-        train_model(model_train,model_eval,learning_rate, steps_number)
+        if not loaded:
+                train_model(model_train,model_eval,learning_rate, steps_number)
 
         accuracy = evaluate_model(model_eval)
 
         if display_model:
                 display_model_with_samples(model_prun, 1)
 
-        important_weights = calculate_important_weights(model_prun,1000)
+        important_weights = calculate_important_weights(model_prun,2000)
         
         if display_pruning:
                 display_important_weights(important_weights)
 
         pruning_step = 0
-        while True:
-                save_model(model,f"step_{pruning_step}_acc_{accuracy}",saver)
+        while pruning_step < pruning_steps:#True:
+                if not loaded:
+                        save_model(model,f"step_{pruning_step}_acc_{accuracy}",saver)
                 pruning_step += 1
-                prune_model(model_prun,important_weights,0.6)
-                train_model(model_train,model_eval,learning_rate, steps_number//3)
+                prune_model(model_prun,important_weights, pruning_faktor)
+                train_model(model_train,model_eval,learning_rate, steps_number//2)
                 accuracy = evaluate_model(model_eval)
                 important_weights = calculate_important_weights(model_prun,1000)
                 if display_pruning:
                         display_important_weights(important_weights)
+                loaded = False
 
 def create_base_model(inputs, outputs):
         x = tf.placeholder(tf.float32, shape=(None, inputs), name="input")
@@ -208,10 +214,16 @@ def create_pruning_model(model):
                         layer_weights = tf.get_collection("layer_weights")
                         connection_out = tf.get_collection("connection_out")
                         for weights in layer_weights:
-                                weight_grad = tf.gradients(loss, weights)
+                                if loss_change:
+                                        weight_grad = tf.multiply(weights,tf.gradients(loss, weights))
+                                else:
+                                        weight_grad = tf.gradients(loss, weights)
                                 tf.add_to_collection("weight_grads", weight_grad)
                         for layer_in in connection_out:
-                                input_grad = tf.gradients(loss, layer_in)
+                                if loss_change:
+                                        input_grad = tf.multiply(layer_in,tf.gradients(loss, layer_in))
+                                else:
+                                        input_grad = tf.gradients(loss, layer_in)
                                 tf.add_to_collection("input_grads", input_grad)
                         
         return x, ground_truth, loss
@@ -235,12 +247,14 @@ def load_or_init_model(saver):
         try:
                 saver.restore(sess, f"./models/{model_to_load}.ckpt")
                 print("======-- model initiliced --======")
+                return True
         except:
                 print("========-- Warning! --========")
                 print("=    failed to load model    =")
                 print("=     initiliced random      =")
                 print("========-- Warning! --========")
                 sess.run(tf.global_variables_initializer())
+                return False
 
 def train_model(model_train, model_eval, learning_rate, steps_number):
         x_train, gt_train, loss, training_op, lr = model_train
@@ -301,8 +315,9 @@ def display_model_with_samples(model_prun, sampels):
 
                 feed_dict = {x: image, ground_truth: label_mask}
                 
-                # calculate the output (feature map) of each layer
+                # calculate the output (feature map) of each layer, Input of the next
                 # -> perform a layer vice forward pass
+                print("Layer Inputs:")
                 outs = []
                 for outputs in connection_out:
                         out = sess.run(outputs, feed_dict=feed_dict)
@@ -335,6 +350,7 @@ def display_model_with_samples(model_prun, sampels):
                         else:
                                 print("Error:",x,"*",y,"=",x * y," != ",len(grad))
                 
+                print("Weight Importance:")
                 #calculate impact of weights directly on final loss
                 for weight_grad in weight_grads:
                         weight_grad = weight_grad[0]
@@ -342,6 +358,7 @@ def display_model_with_samples(model_prun, sampels):
                         
                         print(weight_grad.name)
                         print(weight_grad.shape)
+                        grad = np.abs(grad)
 
                         x = np.sqrt(len(grad))
                         y = np.sqrt(len(grad))
@@ -351,6 +368,7 @@ def display_model_with_samples(model_prun, sampels):
                         else:
                                 print("Error:",x,"*",y,"=",x * y," != ",len(grad))
 
+                print("Input Gradients:")
                 #calculate impact of input directly on final loss
                 for input_grad in input_grads:
                         input_grad = input_grad[0]
@@ -379,6 +397,7 @@ def display_model_with_samples(model_prun, sampels):
                         else:
                                 print("Error:",x,"*",y,"=",x * y," != ",len(out))
                         
+                print("Input Importance:")
                 #calculate abs impact of input directly on final loss
                 for input_grad in input_grads:
                         input_grad = input_grad[0]
@@ -407,11 +426,8 @@ def display_model_with_samples(model_prun, sampels):
                         else:
                                 print("Error:",x,"*",y,"=",x * y," != ",len(out))
                         
-                #--------mask output-----------
-                #calculate from back to front the impact of input on output
-                #mask all not important inputs while reverse calculation
-                #so only important connection have high impacts
-                #TODO wenn using mask gradient diffrent then wen using connections
+                print("Scaled Importance:")
+                #calculate input importance (scale abs grade 0 to 1)
                 input_importance = []
                 for input_grad in input_grads:
                         input_grad = input_grad[0]
@@ -451,6 +467,8 @@ def display_model_with_samples(model_prun, sampels):
                         else:
                                 print("Error:",x,"*",y,"=",x * y," != ",len(grad))
 
+                print("Weight Importance:")
+                #calculate weight importance from input importance
                 for importance_1, importance_2 in zip(input_importance[:-1],input_importance[1:]):
                         print(len(importance_1))
                         print(len(importance_2))
@@ -559,16 +577,16 @@ def prune_model(prune_model,important_weights,sparcification_factor):
                 for weight,weight_mask in zip(important_weight,layer_mask_value):
 
                         maximum = np.max(weight)
-                        ##else here maybe epty list
-                        if maximum > 0 :
+                        ##else here maybe empty list
+                        if sum(weight_mask) > 0 and  maximum > 0:
                                 sparcity = len(weight_mask) / sum(weight_mask)
-                                minimum = np.min(weight[np.nonzero(weight)])
-                                weight = weight - minimum
+                                #minimum = np.min(weight[np.nonzero(weight)])
+                                #weight = weight - minimum
 
                                 median = np.median(weight[np.nonzero(weight)])
                                 mask = weight > pow(sparcification_factor,sparcity) * median
                         else:
-                                mask = weight > 1
+                                mask = weight_mask
                         masks.append(mask)
 
                 masks = np.asarray(masks).T
