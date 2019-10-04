@@ -115,6 +115,10 @@ iterator = batches.make_initializable_iterator()
 # extract an element
 next_element = iterator.get_next()
 
+weight_counts = [[],[],[]]
+sparcitys = [[],[],[]]
+accuracys = []
+
 
 def main():
         model = create_base_model(image_size*image_size,10)
@@ -267,6 +271,7 @@ def evaluate_model(model_eval):
         feed_dict_eval = {x_eval: test_images, gt_eval: test_labels}
         test_accuracy = accuracy.eval(feed_dict=feed_dict_eval)
         print("Test accuracy: %g %%"%(test_accuracy*100))
+        accuracys.append(test_accuracy*100)
         return test_accuracy
 
 def save_model(model,name,saver):
@@ -544,7 +549,7 @@ def prune_model(prune_model,important_weights,sparcification_factor):
         layer_masks = tf.get_collection("layer_masks")
         # Calculate pruning mask
         # Go through every layer
-        for important_weight,layer_mask in zip(important_weights,layer_masks):
+        for i,(important_weight,layer_mask) in enumerate(zip(important_weights,layer_masks)):
                 layer_mask_value = layer_mask.eval()
 
                 # Go through every neuron
@@ -572,6 +577,10 @@ def prune_model(prune_model,important_weights,sparcification_factor):
                         display_puning_masks(masks)
                 
                 print(sum(masks.flatten())," from ", len(masks.flatten())," sparsity: ", sum(masks.flatten())/len(masks.flatten()))
+                
+                weight_counts[i].append(sum(masks.flatten()))
+                sparcitys[i].append(sum(masks.flatten())/len(masks.flatten()))
+
                 layer_mask.load(masks, sess)
 
 
@@ -674,4 +683,43 @@ def show_images(grad,image_shape,titel = 'Multiple images'):
         plt.show()
 
 if __name__ == "__main__":
-    main()
+        main()
+
+        for i in range(3):
+                values = weight_counts[i]
+
+                fig, ax = plt.subplots()
+                ax.plot(values, color="blue")
+
+                ax.set(xlabel='Pruning Step', ylabel='Weight Count',
+                        title=f'Convergence of Weight Count for Layer {i}')
+                ax.grid()
+
+                #fig.savefig("test.png")
+                plt.show()
+
+        values = sparcitys
+
+        fig, ax = plt.subplots()
+        ax.plot(values, color="blue")
+
+        ax.set(xlabel='Layer', ylabel='Sparcity',
+                title='Convergence of Sparcity')
+        ax.set_xticks([0,1,2])
+        ax.set_xticklabels(['zero', 'one','two'])
+        ax.grid()
+
+        #fig.savefig("test.png")
+        plt.show()
+
+        values = accuracys
+
+        fig, ax = plt.subplots()
+        ax.plot(values, color="blue")
+
+        ax.set(xlabel='Pruning Step', ylabel='Accuracy',
+                title='Behavior of Accuracy')
+        ax.grid()
+
+        #fig.savefig("test.png")
+        plt.show()
